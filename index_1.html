@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌿 Záhradný plánovač – Lumigreen.sk</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;background:#f0f4e8;color:#1a1a1a}
+#app{display:flex;flex-direction:column;height:100vh}
+#topbar{display:flex;align-items:center;gap:6px;padding:7px 12px;background:#fff;border-bottom:1px solid #dde;flex-shrink:0;flex-wrap:wrap}
+#main{display:flex;flex:1;overflow:hidden}
+#sidebar{width:210px;flex-shrink:0;background:#fff;border-right:1px solid #dde;display:flex;flex-direction:column;overflow:hidden}
+#sidebar-tabs{display:flex;border-bottom:1px solid #dde}
+.stab{flex:1;padding:8px 4px;text-align:center;cursor:pointer;font-size:11px;color:#888;border:none;border-bottom:2px solid transparent;background:none}
+.stab.active{color:#1a1a1a;border-bottom-color:#1a1a1a;font-weight:600}
+#sidebar-content{flex:1;overflow-y:auto;padding:8px}
+.sec-title{font-size:10px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 5px}
+.tool-btn{display:flex;align-items:center;gap:8px;width:100%;padding:7px 8px;border-radius:8px;border:1px solid transparent;background:none;color:#1a1a1a;cursor:pointer;font-size:12px;text-align:left;margin-bottom:3px}
+.tool-btn:hover{background:#f0f4e8}
+.tool-btn.active{background:#e8f5e0;color:#1b4332;border-color:#b7dba8;font-weight:500}
+.dot{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+.plant-item{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:8px;cursor:pointer;margin-bottom:2px;font-size:11px}
+.plant-item:hover{background:#f0f4e8}
+.plant-item.active{background:#e8f5e0;color:#1b4332;font-weight:500}
+.cat-hdr{font-size:10px;font-weight:600;color:#aaa;margin:10px 0 4px;padding:0 2px;text-transform:uppercase;letter-spacing:.4px}
+#canvas-area{flex:1;position:relative;overflow:hidden;background:#c8e6b0;cursor:crosshair}
+canvas{position:absolute;top:0;left:0}
+#scale-bar{position:absolute;bottom:36px;right:14px;background:rgba(255,255,255,0.92);border:1px solid #dde;border-radius:6px;padding:3px 9px;font-size:10px;color:#666;z-index:10;pointer-events:none}
+#coords{position:absolute;bottom:10px;right:14px;font-size:10px;color:#888;background:rgba(255,255,255,0.88);padding:2px 7px;border-radius:5px;z-index:10;pointer-events:none}
+#layer-bar{position:absolute;bottom:10px;left:10px;display:flex;gap:4px;z-index:10}
+.lbtn{padding:3px 9px;font-size:10px;border-radius:12px;border:1px solid #dde;background:rgba(255,255,255,0.92);color:#888;cursor:pointer}
+.lbtn.active{background:#fff;color:#1a1a1a;font-weight:600}
+.tbtn{padding:5px 10px;border-radius:8px;border:1px solid #dde;background:#fff;color:#1a1a1a;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:4px}
+.tbtn:hover{background:#f0f4e8}
+.tbtn.act{background:#1b4332;color:#fff;border-color:#1b4332}
+#bottombar{padding:5px 12px;background:#fff;border-top:1px solid #dde;display:flex;align-items:center;gap:8px;font-size:11px;color:#888;flex-shrink:0}
+#hint{flex:1}
+/* Upload overlay */
+#upload-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(130,190,100,0.85);z-index:20;cursor:pointer}
+#upload-overlay .icon{font-size:52px}
+#upload-overlay p{font-size:14px;color:#1b4332;font-weight:500;text-align:center;line-height:1.6}
+#file-input{display:none}
+/* AI Panel */
+#ai-panel{position:fixed;bottom:16px;right:16px;z-index:100;display:none;flex-direction:column;width:310px;border-radius:12px;border:1px solid #dde;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,0.12);overflow:hidden}
+#ai-panel.open{display:flex}
+#ai-head{padding:9px 14px;background:#f8f9fa;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #dde}
+#ai-head span{font-size:13px;font-weight:600;color:#1b4332}
+#ai-msgs{max-height:220px;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:7px}
+.amsg{padding:7px 10px;border-radius:10px;font-size:12px;line-height:1.5;max-width:88%}
+.amsg.u{background:#e8f5e0;color:#1b4332;align-self:flex-end}
+.amsg.a{background:#f0f2f4;color:#1a1a1a;align-self:flex-start}
+.amsg.l{color:#aaa;font-style:italic;align-self:flex-start}
+#ai-row{display:flex;gap:6px;padding:8px}
+#ai-inp{flex:1;font-size:12px;padding:6px 10px;border:1px solid #dde;border-radius:8px;outline:none}
+#ai-inp:focus{border-color:#52b788}
+/* Templates */
+.tmpl-card{border:1px solid #dde;border-radius:8px;padding:8px;cursor:pointer;margin-bottom:6px;font-size:11px}
+.tmpl-card:hover{background:#f0f4e8;border-color:#b7dba8}
+.tmpl-card strong{display:block;margin-bottom:2px;color:#1b4332}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <span style="font-size:15px;font-weight:700;color:#1b4332">🌿 Záhradný plánovač</span>
+    <span style="font-size:10px;color:#aaa;border:1px solid #dde;border-radius:10px;padding:2px 8px">lumigreen.sk</span>
+    <div style="width:1px;height:20px;background:#dde;margin:0 2px"></div>
+    <button class="tbtn" id="btn-undo" title="Ctrl+Z"><i class="ti ti-arrow-back-up"></i> Späť</button>
+    <button class="tbtn" id="btn-redo" title="Ctrl+Y"><i class="ti ti-arrow-forward-up"></i> Vpred</button>
+    <button class="tbtn" id="btn-copy" title="Ctrl+C"><i class="ti ti-copy"></i></button>
+    <button class="tbtn" id="btn-paste" title="Ctrl+V"><i class="ti ti-clipboard"></i></button>
+    <button class="tbtn" id="btn-delete" title="Delete"><i class="ti ti-trash"></i></button>
+    <div style="width:1px;height:18px;background:#dde;margin:0 2px"></div>
+    <button class="tbtn" id="btn-grid"><i class="ti ti-grid-dots"></i> Mriežka</button>
+    <button class="tbtn" id="btn-upload"><i class="ti ti-upload"></i> Foto / Pôdorys</button>
+    <button class="tbtn" id="btn-download"><i class="ti ti-download"></i> Stiahnuť plán</button>
+    <input type="file" id="file-input" accept="image/*">
+    <button class="tbtn act" id="btn-ai" style="margin-left:auto"><i class="ti ti-robot"></i> AI poradca</button>
+  </div>
+
+  <div id="main">
+    <div id="sidebar">
+      <div id="sidebar-tabs">
+        <button class="stab active" data-tab="tools">Nástroje</button>
+        <button class="stab" data-tab="plants">Rastliny</button>
+        <button class="stab" data-tab="objects">Objekty</button>
+        <button class="stab" data-tab="templates">Šablóny</button>
+      </div>
+      <div id="sidebar-content"></div>
+    </div>
+    <div id="canvas-area">
+      <canvas id="c-bg"></canvas>
+      <canvas id="c-areas"></canvas>
+      <canvas id="c-plants"></canvas>
+      <canvas id="c-ui"></canvas>
+      <div id="upload-overlay">
+        <div class="icon">📷</div>
+        <p>Klikni alebo pretiahni<br><strong>fotografiu z dronu</strong> alebo <strong>pôdorys</strong></p>
+      </div>
+      <div id="scale-bar">Mriežka: 1 štvorček = 1 m²</div>
+      <div id="coords">0 m, 0 m</div>
+      <div id="layer-bar">
+        <button class="lbtn active" data-layer="0">Pozadie</button>
+        <button class="lbtn" data-layer="1">Plochy</button>
+        <button class="lbtn" data-layer="2">Rastliny</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottombar">
+    <span id="hint">👋 Vitaj! Vyber nástroj vľavo a začni plánovať záhradu.</span>
+    <span style="color:#bbb">Ctrl+Z späť · Ctrl+C/V kopírovať · Delete zmazať</span>
+  </div>
+</div>
+
+<!-- AI Panel -->
+<div id="ai-panel">
+  <div id="ai-head">
+    <span>🤖 AI záhradný poradca</span>
+    <button class="tbtn" id="btn-ai-close" style="padding:2px 8px;font-size:11px">✕ zavrieť</button>
+  </div>
+  <div id="ai-msgs">
+    <div class="amsg a">Ahoj! Som tvoj AI záhradný poradca napojený na <strong>Lumigreen.sk</strong>. Opýtaj sa ma napr. <em>"Navrhni romantickú záhradu"</em> alebo <em>"Čo k plotu?"</em></div>
+  </div>
+  <div id="ai-row">
+    <input type="text" id="ai-inp" placeholder="Opýtaj sa o záhrade...">
+    <button class="tbtn act" id="btn-ai-send"><i class="ti ti-send"></i></button>
+  </div>
+</div>
+
+<script>
+const GRID = 40;
+
+const AREA_TYPES = [
+  {id:"lawn",   name:"Trávnik",          color:"rgba(100,190,70,0.45)",  stroke:"#3a7a20"},
+  {id:"flower", name:"Kvetinový záhon",  color:"rgba(255,160,190,0.50)", stroke:"#c0407a"},
+  {id:"gravel", name:"Štrk / Dlažba",   color:"rgba(180,170,150,0.55)", stroke:"#7a6a5a"},
+  {id:"water",  name:"Vodná plocha",     color:"rgba(60,160,220,0.50)",  stroke:"#1060b0"},
+  {id:"veggie", name:"Zeleninový záhon", color:"rgba(140,210,80,0.50)",  stroke:"#3a6a10"},
+  {id:"terrace",name:"Terasa",           color:"rgba(210,185,140,0.55)", stroke:"#7a5a20"},
+];
+
+const PLANTS = [
+  // Stromy
+  {id:"breza",    name:"Breza",         e:"🌳", cat:"Stromy",   c:"#a5d6a7", r:28, desc:"Štíhly listnatý strom"},
+  {id:"buk",      name:"Buk",           e:"🌳", cat:"Stromy",   c:"#388e3c", r:38, desc:"Mohutný strom"},
+  {id:"dub",      name:"Dub",           e:"🌳", cat:"Stromy",   c:"#1b5e20", r:42, desc:"Dlhovečný strom"},
+  {id:"javor",    name:"Javor červený", e:"🍁", cat:"Stromy",   c:"#c62828", r:34, desc:"Červený javor"},
+  {id:"lipa",     name:"Lipa",          e:"🌳", cat:"Stromy",   c:"#43a047", r:40, desc:"Voňavý letný strom"},
+  {id:"magnolia", name:"Magnólia",      e:"🌸", cat:"Stromy",   c:"#f48fb1", r:30, desc:"Ružové kvety na jar"},
+  {id:"orgovan",  name:"Orgován",       e:"💜", cat:"Stromy",   c:"#8e24aa", r:24, desc:"Voňavé fialové kvety"},
+  {id:"sakura",   name:"Sakura",        e:"🌸", cat:"Stromy",   c:"#f06292", r:30, desc:"Japonská čerešňa"},
+  {id:"vrba",     name:"Vŕba plačúca", e:"🌿", cat:"Stromy",   c:"#81c784", r:36, desc:"Vŕba pri vode"},
+  {id:"ginko",    name:"Ginko",         e:"🌳", cat:"Stromy",   c:"#aed581", r:32, desc:"Prastarý strom"},
+  // Ovocné
+  {id:"jablon",   name:"Jabloň",        e:"🍎", cat:"Ovocné",   c:"#388e3c", r:30, desc:"Ovocný strom"},
+  {id:"hruska",   name:"Hruška",        e:"🍐", cat:"Ovocné",   c:"#558b2f", r:28, desc:"Ovocný strom"},
+  {id:"tresna",   name:"Čerešňa",       e:"🍒", cat:"Ovocné",   c:"#b71c1c", r:28, desc:"Ovocný strom"},
+  {id:"slivka",   name:"Slivka",        e:"🫐", cat:"Ovocné",   c:"#4527a0", r:26, desc:"Ovocný strom"},
+  {id:"rybizka",  name:"Ríbezľa",       e:"🍇", cat:"Ovocné",   c:"#6a1b9a", r:14, desc:"Drobné ovocie"},
+  {id:"malina",   name:"Malina",        e:"🫐", cat:"Ovocné",   c:"#ad1457", r:12, desc:"Drobné ovocie"},
+  // Ihličnany
+  {id:"tuja",     name:"Tuja",          e:"🌲", cat:"Ihličnany",c:"#1b5e20", r:18, desc:"Živý plot"},
+  {id:"smrek",    name:"Smrek",         e:"🎄", cat:"Ihličnany",c:"#2e7d32", r:32, desc:"Klasický ihličnan"},
+  {id:"borievka", name:"Borievka",      e:"🌲", cat:"Ihličnany",c:"#33691e", r:16, desc:"Kompaktný ihličnan"},
+  {id:"tis",      name:"Tis",           e:"🌲", cat:"Ihličnany",c:"#004d40", r:20, desc:"Tvarovaný ker"},
+  {id:"trpaslici",name:"Trpasličí ihl.",e:"🌲", cat:"Ihličnany",c:"#455a64", r:12, desc:"Guľovitý"},
+  // Kry
+  {id:"rhodo",    name:"Rododendron",   e:"🌺", cat:"Kry",      c:"#ad1457", r:24, desc:"Veľké jarné kvety"},
+  {id:"azalka",   name:"Azalka",        e:"🌸", cat:"Kry",      c:"#e91e63", r:18, desc:"Do tieňa"},
+  {id:"vajgela",  name:"Vajgela",       e:"🌺", cat:"Kry",      c:"#c2185b", r:20, desc:"Nenáročný ker"},
+  {id:"forsytia", name:"Forsýtia",      e:"🌼", cat:"Kry",      c:"#f9a825", r:20, desc:"Žlté jarné kvety"},
+  {id:"buxus",    name:"Buxus",         e:"🟢", cat:"Kry",      c:"#2e7d32", r:14, desc:"Tvarovaný vždy zelený"},
+  {id:"oleander", name:"Oleander",      e:"🌸", cat:"Kry",      c:"#e91e63", r:18, desc:"Mediteránny ker"},
+  // Trvalky
+  {id:"lavender", name:"Levanduľa",     e:"💜", cat:"Trvalky",  c:"#6a1b9a", r:11, desc:"Aromatická"},
+  {id:"echinacea",name:"Echinacea",     e:"🌸", cat:"Trvalky",  c:"#c2185b", r:10, desc:"Liečivá trvalka"},
+  {id:"astilba",  name:"Astilba",       e:"🌸", cat:"Trvalky",  c:"#d81b60", r:13, desc:"Perie kvetov"},
+  {id:"jezibaba", name:"Ježibaba",      e:"🔵", cat:"Trvalky",  c:"#1565c0", r:11, desc:"Modré guľovité kvety"},
+  // Hortenzie
+  {id:"hort_b",   name:"Hortenzia biela",  e:"🤍", cat:"Hortenzie",c:"#9e9e9e", r:20, desc:"Snehobiele kvety"},
+  {id:"hort_m",   name:"Hortenzia modrá",  e:"💙", cat:"Hortenzie",c:"#1565c0", r:20, desc:"Modré kvety"},
+  {id:"hort_r",   name:"Hortenzia ružová", e:"🩷", cat:"Hortenzie",c:"#e91e63", r:20, desc:"Ružové kvety"},
+  {id:"hort_met", name:"Hortenzia metlin.",e:"🌸", cat:"Hortenzie",c:"#f48fb1", r:22, desc:"Veľké metliny"},
+  // Ruže
+  {id:"ruza",     name:"Ruža červená",  e:"🌹", cat:"Ruže",     c:"#b71c1c", r:13, desc:"Záhradná ruža"},
+  {id:"ruza_b",   name:"Ruža biela",    e:"🤍", cat:"Ruže",     c:"#90a4ae", r:13, desc:"Biela ruža"},
+  {id:"ruza_z",   name:"Ruža žltá",     e:"💛", cat:"Ruže",     c:"#f9a825", r:13, desc:"Žltá ruža"},
+  {id:"ruza_p",   name:"Pnúca ruža",    e:"🌹", cat:"Ruže",     c:"#e91e63", r:13, desc:"Popínavá ruža"},
+  // Ostatné
+  {id:"lekno",    name:"Lekno",         e:"🪷", cat:"Vodné",    c:"#e91e63", r:18, desc:"Na jazierko"},
+  {id:"bambus",   name:"Bambus",        e:"🎋", cat:"Bambusy",  c:"#33691e", r:16, desc:"Rýchlo rastúci"},
+  {id:"rozmarín", name:"Rozmarín",      e:"🌿", cat:"Bylinky",  c:"#2e7d32", r:10, desc:"Aromatická bylinka"},
+  {id:"salia",    name:"Šalvia",        e:"💜", cat:"Bylinky",  c:"#6a1b9a", r: 9, desc:"Liečivá bylinka"},
+];
+
+const OBJECTS = [
+  {id:"jazierko",   name:"Jazierko",       e:"💧", r:35, c:"#42a5f5", desc:"Vodný prvok"},
+  {id:"fontana",    name:"Fontána",        e:"⛲", r:20, c:"#64b5f6", desc:"Fontána"},
+  {id:"lavicka",    name:"Lavička",        e:"🪑", r:14, c:"#8d6e63", desc:"Záhradný nábytok"},
+  {id:"pergola",    name:"Pergola",        e:"🏗️", r:32, c:"#a1887f", desc:"Záhradná pergola"},
+  {id:"kamen",      name:"Kamenný chodník",e:"🪨", r:12, c:"#90a4ae", desc:"Záhradný chodník"},
+  {id:"altanok",    name:"Altánok",        e:"⛺", r:28, c:"#bcaaa4", desc:"Záhradný altánok"},
+  {id:"dom",        name:"Dom",            e:"🏠", r:42, c:"#ef9a9a", desc:"Rodinný dom"},
+  {id:"garaz",      name:"Garáž",          e:"🚗", r:30, c:"#b0bec5", desc:"Garáž"},
+  {id:"zahradny_d", name:"Záhradný domček",e:"🏡", r:24, c:"#ffcc80", desc:"Záhradný domček"},
+  {id:"komposter",  name:"Kompostér",      e:"♻️", r:14, c:"#a5d6a7", desc:"Kompostér"},
+  {id:"zahon_v",    name:"Vyvýšený záhon", e:"🌱", r:20, c:"#c5e1a5", desc:"Vyvýšený záhon"},
+  {id:"studna",     name:"Studňa",         e:"🪣", r:14, c:"#81d4fa", desc:"Záhradná studňa"},
+];
+
+const TEMPLATES = [
+  {
+    name:"🌺 Romantická záhrada",
+    desc:"Ruže, magnólia, hortenzia, levanduľa",
+    plants:[
+      {pid:"magnolia",x:0.2,y:0.3},{pid:"magnolia",x:0.75,y:0.25},
+      {pid:"ruza",x:0.35,y:0.55},{pid:"ruza",x:0.45,y:0.55},{pid:"ruza",x:0.55,y:0.55},
+      {pid:"ruza_b",x:0.4,y:0.65},{pid:"ruza_b",x:0.6,y:0.65},
+      {pid:"hort_r",x:0.15,y:0.65},{pid:"hort_b",x:0.8,y:0.6},
+      {pid:"lavender",x:0.25,y:0.75},{pid:"lavender",x:0.5,y:0.78},{pid:"lavender",x:0.7,y:0.75},
+      {pid:"fontana",x:0.5,y:0.4},
+    ]
+  },
+  {
+    name:"🌳 Prírodná záhrada",
+    desc:"Stromy, kry, trávnaté plochy",
+    plants:[
+      {pid:"dub",x:0.15,y:0.2},{pid:"lipa",x:0.8,y:0.15},
+      {pid:"breza",x:0.5,y:0.15},{pid:"breza",x:0.6,y:0.2},
+      {pid:"rhodo",x:0.2,y:0.6},{pid:"rhodo",x:0.75,y:0.55},
+      {pid:"forsytia",x:0.4,y:0.7},{pid:"vajgela",x:0.6,y:0.7},
+      {pid:"bambus",x:0.85,y:0.75},{pid:"bambus",x:0.9,y:0.65},
+      {pid:"echinacea",x:0.35,y:0.55},{pid:"echinacea",x:0.45,y:0.58},
+      {pid:"lavicka",x:0.5,y:0.45},
+    ]
+  },
+  {
+    name:"🍎 Ovocná záhrada",
+    desc:"Ovocné stromy, drobné ovocie",
+    plants:[
+      {pid:"jablon",x:0.2,y:0.25},{pid:"jablon",x:0.5,y:0.2},{pid:"jablon",x:0.78,y:0.25},
+      {pid:"hruska",x:0.2,y:0.6},{pid:"tresna",x:0.78,y:0.6},
+      {pid:"slivka",x:0.5,y:0.55},
+      {pid:"rybizka",x:0.3,y:0.8},{pid:"rybizka",x:0.5,y:0.82},{pid:"rybizka",x:0.7,y:0.8},
+      {pid:"malina",x:0.15,y:0.8},{pid:"malina",x:0.85,y:0.8},
+      {pid:"komposter",x:0.88,y:0.42},
+    ]
+  },
+  {
+    name:"🌿 Bylinková záhrada",
+    desc:"Byliny, levanduľa, šalvia",
+    plants:[
+      {pid:"rozmarín",x:0.25,y:0.3},{pid:"rozmarín",x:0.35,y:0.3},{pid:"rozmarín",x:0.45,y:0.3},
+      {pid:"salia",x:0.55,y:0.3},{pid:"salia",x:0.65,y:0.3},{pid:"salia",x:0.75,y:0.3},
+      {pid:"lavender",x:0.25,y:0.5},{pid:"lavender",x:0.4,y:0.5},{pid:"lavender",x:0.55,y:0.5},{pid:"lavender",x:0.7,y:0.5},
+      {pid:"echinacea",x:0.3,y:0.7},{pid:"echinacea",x:0.5,y:0.7},{pid:"echinacea",x:0.7,y:0.7},
+      {pid:"zahon_v",x:0.5,y:0.2},
+    ]
+  },
+];
+
+// --- State ---
+let areas=[], plants=[], hist=[], redoStack=[], selId=null, clipboard=null;
+let activeTool="select", activeArea=AREA_TYPES[0], activePlant=null, activeLayer=2;
+let bgImg=null, uid=1, showGrid=true;
+let drawingPoly=false, polyPts=[];
+let dragging=null, dragOff={x:0,y:0}, dragType=null;
+let activeSideTab="tools";
+
+const CA = document.getElementById("canvas-area");
+const cBg = document.getElementById("c-bg"), cAr = document.getElementById("c-areas");
+const cPl = document.getElementById("c-plants"), cUi = document.getElementById("c-ui");
+const ctxBg=cBg.getContext("2d"), ctxAr=cAr.getContext("2d");
+const ctxPl=cPl.getContext("2d"), ctxUi=cUi.getContext("2d");
+
+function resize(){
+  const w=CA.clientWidth, h=CA.clientHeight;
+  [cBg,cAr,cPl,cUi].forEach(c=>{c.width=w;c.height=h;});
+  redraw();
+}
+
+function redraw(){drawBg();drawAreas();drawPlants();}
+
+function drawBg(){
+  const w=cBg.width, h=cBg.height;
+  ctxBg.clearRect(0,0,w,h);
+  if(bgImg){
+    ctxBg.save(); ctxBg.globalAlpha=0.88;
+    const ir=bgImg.width/bgImg.height, cr=w/h;
+    let sx=0,sy=0,sw=bgImg.width,sh=bgImg.height;
+    if(ir>cr){sw=bgImg.height*cr;sx=(bgImg.width-sw)/2;}
+    else{sh=bgImg.width/cr;sy=(bgImg.height-sh)/2;}
+    ctxBg.drawImage(bgImg,sx,sy,sw,sh,0,0,w,h);
+    ctxBg.restore();
+  } else {
+    ctxBg.fillStyle="#b8d8a0"; ctxBg.fillRect(0,0,w,h);
+  }
+  if(showGrid){
+    ctxBg.strokeStyle=bgImg?"rgba(255,255,255,0.18)":"rgba(80,120,60,0.2)";
+    ctxBg.lineWidth=0.5;
+    for(let x=0;x<=w;x+=GRID){ctxBg.beginPath();ctxBg.moveTo(x,0);ctxBg.lineTo(x,h);ctxBg.stroke();}
+    for(let y=0;y<=h;y+=GRID){ctxBg.beginPath();ctxBg.moveTo(0,y);ctxBg.lineTo(w,y);ctxBg.stroke();}
+  }
+}
+
+function drawAreas(){
+  ctxAr.clearRect(0,0,cAr.width,cAr.height);
+  areas.forEach(a=>{
+    if(!a.pts||a.pts.length<2)return;
+    const def=AREA_TYPES.find(t=>t.id===a.type)||AREA_TYPES[0];
+    ctxAr.beginPath();
+    ctxAr.moveTo(a.pts[0].x,a.pts[0].y);
+    a.pts.forEach(p=>ctxAr.lineTo(p.x,p.y));
+    ctxAr.closePath();
+    ctxAr.fillStyle=def.color; ctxAr.fill();
+    ctxAr.strokeStyle=a.id===selId?def.stroke:def.stroke+"88";
+    ctxAr.lineWidth=a.id===selId?2.5:1.5; ctxAr.stroke();
+    if(a.id===selId){
+      a.pts.forEach(p=>{
+        ctxAr.beginPath();ctxAr.arc(p.x,p.y,5,0,Math.PI*2);
+        ctxAr.fillStyle="#fff";ctxAr.fill();
+        ctxAr.strokeStyle=def.stroke;ctxAr.lineWidth=1.5;ctxAr.stroke();
+      });
+    }
+    const cx=a.pts.reduce((s,p)=>s+p.x,0)/a.pts.length;
+    const cy=a.pts.reduce((s,p)=>s+p.y,0)/a.pts.length;
+    ctxAr.font="11px sans-serif";ctxAr.textAlign="center";ctxAr.textBaseline="middle";
+    ctxAr.fillStyle="rgba(0,0,0,0.5)";ctxAr.fillText(def.name,cx,cy);
+  });
+  if(drawingPoly&&polyPts.length>0){
+    ctxAr.beginPath();ctxAr.moveTo(polyPts[0].x,polyPts[0].y);
+    polyPts.forEach(p=>ctxAr.lineTo(p.x,p.y));
+    ctxAr.strokeStyle=activeArea.stroke;ctxAr.lineWidth=1.5;
+    ctxAr.setLineDash([6,3]);ctxAr.stroke();ctxAr.setLineDash([]);
+    polyPts.forEach(p=>{
+      ctxAr.beginPath();ctxAr.arc(p.x,p.y,4,0,Math.PI*2);
+      ctxAr.fillStyle="#fff";ctxAr.fill();
+      ctxAr.strokeStyle=activeArea.stroke;ctxAr.lineWidth=1.5;ctxAr.stroke();
+    });
+  }
+}
+
+function drawPlants(){
+  ctxPl.clearRect(0,0,cPl.width,cPl.height);
+  plants.forEach(p=>{
+    const def=[...PLANTS,...OBJECTS].find(d=>d.id===p.pid); if(!def)return;
+    const isSel=p.id===selId;
+    if(isSel){
+      ctxPl.beginPath();ctxPl.arc(p.x,p.y,def.r+5,0,Math.PI*2);
+      ctxPl.strokeStyle="#f4d03f";ctxPl.lineWidth=2.5;ctxPl.setLineDash([5,3]);ctxPl.stroke();ctxPl.setLineDash([]);
+    }
+    ctxPl.beginPath();ctxPl.arc(p.x,p.y,def.r,0,Math.PI*2);
+    ctxPl.fillStyle=(def.c||"#888")+(isSel?"ff":"cc");ctxPl.fill();
+    ctxPl.beginPath();ctxPl.arc(p.x,p.y,def.r*0.7,0,Math.PI*2);
+    ctxPl.fillStyle=def.c||"#888";ctxPl.fill();
+    ctxPl.font=`${def.r}px serif`;ctxPl.textAlign="center";ctxPl.textBaseline="middle";
+    ctxPl.fillText(def.e,p.x,p.y);
+    ctxPl.font="bold 9px sans-serif";
+    ctxPl.strokeStyle="rgba(255,255,255,0.85)";ctxPl.lineWidth=2.5;
+    ctxPl.strokeText(def.name,p.x,p.y+def.r+10);
+    ctxPl.fillStyle="#111";ctxPl.fillText(def.name,p.x,p.y+def.r+10);
+  });
+}
+
+function snapG(v){return Math.round(v/GRID)*GRID;}
+function getPos(e){
+  const r=cUi.getBoundingClientRect();
+  return{x:e.clientX-r.left,y:e.clientY-r.top};
+}
+function snapPos(p){return{x:snapG(p.x),y:snapG(p.y)};}
+function ptInPoly(px,py,pts){
+  let inside=false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const xi=pts[i].x,yi=pts[i].y,xj=pts[j].x,yj=pts[j].y;
+    if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi))inside=!inside;
+  }
+  return inside;
+}
+
+cUi.addEventListener("mousemove",e=>{
+  const {x,y}=getPos(e);
+  document.getElementById("coords").textContent=`${Math.floor(x/GRID)} m, ${Math.floor(y/GRID)} m`;
+  if(dragging&&dragType==="plant"){
+    const p=plants.find(q=>q.id===dragging);
+    if(p){p.x=x-dragOff.x;p.y=y-dragOff.y;drawPlants();}
+  }
+});
+
+cUi.addEventListener("mousedown",e=>{
+  const pos=getPos(e);
+  const {x,y}=pos;
+  if(activeTool==="select"){
+    for(let i=plants.length-1;i>=0;i--){
+      const p=plants[i];
+      const def=[...PLANTS,...OBJECTS].find(d=>d.id===p.pid);
+      if(Math.hypot(p.x-x,p.y-y)<def.r+5){
+        selId=p.id;dragging=p.id;dragType="plant";
+        dragOff={x:x-p.x,y:y-p.y};
+        drawPlants();setHint("Potiahni na presun · Delete = zmazať · Ctrl+C = kopírovať");return;
+      }
+    }
+    for(let i=areas.length-1;i>=0;i--){
+      if(areas[i].pts&&ptInPoly(x,y,areas[i].pts)){
+        selId=areas[i].id;drawAreas();setHint("Plocha vybraná · Delete = zmazať");return;
+      }
+    }
+    selId=null;drawAreas();drawPlants();
+  } else if(activeTool==="area"){
+    if(e.detail>=2){
+      if(polyPts.length>=3){
+        saveHist();
+        areas.push({id:uid++,type:activeArea.id,pts:[...polyPts]});
+        drawingPoly=false;polyPts=[];drawAreas();
+        setHint("✅ Plocha pridaná! Klikaj ďalej pre novú plochu.");
+      }
+    } else {
+      if(!drawingPoly)drawingPoly=true;
+      polyPts.push(snapPos(pos));drawAreas();
+      setHint(`Bod ${polyPts.length} pridaný · Dvojklik = ukončiť plochu`);
+    }
+  } else if(activeTool==="plant"&&activePlant){
+    saveHist();
+    plants.push({id:uid++,pid:activePlant,x:snapG(x),y:snapG(y)});
+    selId=plants[plants.length-1].id;drawPlants();
+    const def=[...PLANTS,...OBJECTS].find(d=>d.id===activePlant);
+    setHint(`✅ ${def.name} pridaná!`);
+  }
+});
+
+cUi.addEventListener("mouseup",()=>{if(dragging){saveHist();dragging=null;dragType=null;}});
+
+function saveHist(){hist.push({areas:JSON.parse(JSON.stringify(areas)),plants:JSON.parse(JSON.stringify(plants))});redoStack=[];}
+function undo(){if(!hist.length)return;redoStack.push({areas:JSON.parse(JSON.stringify(areas)),plants:JSON.parse(JSON.stringify(plants))});const s=hist.pop();areas=s.areas;plants=s.plants;selId=null;redraw();}
+function redo(){if(!redoStack.length)return;hist.push({areas:JSON.parse(JSON.stringify(areas)),plants:JSON.parse(JSON.stringify(plants))});const s=redoStack.pop();areas=s.areas;plants=s.plants;selId=null;redraw();}
+function deleteSel(){if(!selId)return;saveHist();areas=areas.filter(a=>a.id!==selId);plants=plants.filter(p=>p.id!==selId);selId=null;redraw();}
+function copyObj(){const p=plants.find(q=>q.id===selId);if(p)clipboard={...p};}
+function pasteObj(){if(!clipboard)return;saveHist();const n={...clipboard,id:uid++,x:clipboard.x+GRID,y:clipboard.y+GRID};plants.push(n);selId=n.id;drawPlants();}
+
+document.getElementById("btn-undo").onclick=undo;
+document.getElementById("btn-redo").onclick=redo;
+document.getElementById("btn-delete").onclick=deleteSel;
+document.getElementById("btn-copy").onclick=copyObj;
+document.getElementById("btn-paste").onclick=pasteObj;
+document.getElementById("btn-grid").onclick=()=>{showGrid=!showGrid;drawBg();};
+
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT")return;
+  if(e.ctrlKey&&e.key==="z"){e.preventDefault();undo();}
+  if(e.ctrlKey&&e.key==="y"){e.preventDefault();redo();}
+  if(e.ctrlKey&&e.key==="c"){e.preventDefault();copyObj();}
+  if(e.ctrlKey&&e.key==="v"){e.preventDefault();pasteObj();}
+  if(e.key==="Delete"||e.key==="Backspace"){if(document.activeElement===document.body){e.preventDefault();deleteSel();}}
+});
+
+function loadImg(file){
+  const r=new FileReader();
+  r.onload=e=>{const i=new Image();i.onload=()=>{bgImg=i;document.getElementById("upload-overlay").style.display="none";drawBg();};i.src=e.target.result;};
+  r.readAsDataURL(file);
+}
+document.getElementById("btn-upload").onclick=()=>document.getElementById("file-input").click();
+document.getElementById("file-input").onchange=e=>{if(e.target.files[0])loadImg(e.target.files[0]);};
+document.getElementById("upload-overlay").onclick=()=>document.getElementById("file-input").click();
+CA.addEventListener("dragover",e=>e.preventDefault());
+CA.addEventListener("drop",e=>{e.preventDefault();if(e.dataTransfer.files[0])loadImg(e.dataTransfer.files[0]);});
+
+document.getElementById("btn-download").onclick=()=>{
+  const w=cBg.width,h=cBg.height;
+  const tmp=document.createElement("canvas");tmp.width=w;tmp.height=h;
+  const tc=tmp.getContext("2d");
+  tc.drawImage(cBg,0,0);tc.drawImage(cAr,0,0);tc.drawImage(cPl,0,0);
+  tc.font="bold 13px sans-serif";tc.fillStyle="rgba(0,0,0,0.4)";
+  tc.fillText("🌿 Záhradný plán · lumigreen.sk",10,h-10);
+  const a=document.createElement("a");a.download="zahradny-plan.png";a.href=tmp.toDataURL("image/png");a.click();
+};
+
+function setHint(t){document.getElementById("hint").textContent=t;}
+
+function buildSidebar(){
+  const sc=document.getElementById("sidebar-content");
+  sc.innerHTML="";
+  const div=t=>{const d=document.createElement("div");d.className="sec-title";d.textContent=t;sc.appendChild(d);};
+
+  if(activeSideTab==="tools"){
+    div("Nástroj");
+    [{id:"select",icon:"🖱️",label:"Vybrať / presunúť"},
+     {id:"area",  icon:"📐",label:"Kresliť plochu"},
+     {id:"plant", icon:"🌱",label:"Pridať rastlinu / objekt"},
+    ].forEach(t=>{
+      const b=document.createElement("button");
+      b.className="tool-btn"+(activeTool===t.id?" active":"");
+      b.innerHTML=`<span style="font-size:15px">${t.icon}</span>${t.label}`;
+      b.onclick=()=>{
+        activeTool=t.id;buildSidebar();
+        const hints={select:"Klikni na prvok pre výber, potiahni pre presun",area:"Klikaj body plochy, dvojklik = ukončiť",plant:"Vyber rastlinu vľavo → klikni na záhradu"};
+        setHint(hints[t.id]);
+      };
+      sc.appendChild(b);
+    });
+    if(activeTool==="area"){
+      div("Typ plochy");
+      AREA_TYPES.forEach(a=>{
+        const b=document.createElement("button");
+        b.className="tool-btn"+(activeArea.id===a.id?" active":"");
+        b.innerHTML=`<span class="dot" style="background:${a.color};border:1.5px solid ${a.stroke}"></span>${a.name}`;
+        b.onclick=()=>{activeArea=a;buildSidebar();};
+        sc.appendChild(b);
+      });
+    }
+    div("Vrstvy");
+    ["Pozadie","Plochy","Rastliny & Objekty"].forEach((l,i)=>{
+      const b=document.createElement("button");
+      b.className="tool-btn"+(activeLayer===i?" active":"");
+      b.innerHTML=`<span style="font-size:12px">📄</span>${l}`;
+      b.onclick=()=>{activeLayer=i;buildSidebar();};
+      sc.appendChild(b);
+    });
+  } else if(activeSideTab==="plants"){
+    const cats=[...new Set(PLANTS.map(p=>p.cat))];
+    cats.forEach(cat=>{
+      const hdr=document.createElement("div");hdr.className="cat-hdr";hdr.textContent=cat;sc.appendChild(hdr);
+      PLANTS.filter(p=>p.cat===cat).forEach(p=>{
+        const d=document.createElement("div");
+        d.className="plant-item"+(activePlant===p.id&&activeTool==="plant"?" active":"");
+        d.innerHTML=`<span style="font-size:16px">${p.e}</span><div><div style="font-weight:600;color:#1b4332">${p.name}</div><div style="font-size:10px;color:#aaa">${p.desc}</div></div>`;
+        d.onclick=()=>{activePlant=p.id;activeTool="plant";buildSidebar();setHint(`Klikni na záhradu kde chceš umiestniť ${p.e} ${p.name}`);};
+        sc.appendChild(d);
+      });
+    });
+  } else if(activeSideTab==="objects"){
+    const hdr=document.createElement("div");hdr.className="cat-hdr";hdr.textContent="Záhradné objekty";sc.appendChild(hdr);
+    OBJECTS.forEach(p=>{
+      const d=document.createElement("div");
+      d.className="plant-item"+(activePlant===p.id&&activeTool==="plant"?" active":"");
+      d.innerHTML=`<span style="font-size:16px">${p.e}</span><div><div style="font-weight:600;color:#1b4332">${p.name}</div><div style="font-size:10px;color:#aaa">${p.desc}</div></div>`;
+      d.onclick=()=>{activePlant=p.id;activeTool="plant";buildSidebar();setHint(`Klikni na záhradu: ${p.e} ${p.name}`);};
+      sc.appendChild(d);
+    });
+  } else if(activeSideTab==="templates"){
+    div("Šablóny záhrad");
+    TEMPLATES.forEach(t=>{
+      const d=document.createElement("div");
+      d.className="tmpl-card";
+      d.innerHTML=`<strong>${t.name}</strong>${t.desc}`;
+      d.onclick=()=>{
+        if(!confirm(`Načítať šablónu "${t.name}"? Aktuálne rastliny budú nahradené.`))return;
+        saveHist();
+        const w=cPl.width,h=cPl.height;
+        plants=t.plants.map(p=>({...p,id:uid++,x:p.x*w,y:p.y*h}));
+        selId=null;drawPlants();
+        setHint(`✅ Šablóna "${t.name}" načítaná!`);
+      };
+      sc.appendChild(d);
+    });
+  }
+}
+
+document.querySelectorAll(".stab").forEach(b=>{
+  b.onclick=()=>{
+    activeSideTab=b.dataset.tab;
+    document.querySelectorAll(".stab").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    buildSidebar();
+  };
+});
+document.querySelectorAll(".lbtn").forEach(b=>{
+  b.onclick=()=>{
+    activeLayer=parseInt(b.dataset.layer);
+    document.querySelectorAll(".lbtn").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+  };
+});
+
+// AI
+document.getElementById("btn-ai").onclick=()=>document.getElementById("ai-panel").classList.add("open");
+document.getElementById("btn-ai-close").onclick=()=>document.getElementById("ai-panel").classList.remove("open");
+
+function gardenSum(){
+  const pc={};plants.forEach(p=>{const d=[...PLANTS,...OBJECTS].find(x=>x.id===p.pid);if(d)pc[d.name]=(pc[d.name]||0)+1;});
+  const ac={};areas.forEach(a=>{const d=AREA_TYPES.find(x=>x.id===a.type);if(d)ac[d.name]=(ac[d.name]||0)+1;});
+  const ps=Object.entries(pc).map(([k,v])=>`${v}x ${k}`).join(", ")||"žiadne";
+  const as=Object.entries(ac).map(([k,v])=>`${v}x ${k}`).join(", ")||"žiadne";
+  return `Rastliny: ${ps}. Plochy: ${as}.`;
+}
+
+const ANTHROPIC_KEY = ""; // <-- VLOŽ SEM SVOJ API KĽÚČ
+
+async function aiSend(){
+  const txt=document.getElementById("ai-inp").value.trim();if(!txt)return;
+  document.getElementById("ai-inp").value="";
+  const msgs=document.getElementById("ai-msgs");
+  const ud=document.createElement("div");ud.className="amsg u";ud.textContent=txt;msgs.appendChild(ud);
+  const ld=document.createElement("div");ld.className="amsg l";ld.textContent="AI premýšľa...";msgs.appendChild(ld);
+  msgs.scrollTop=msgs.scrollHeight;
+
+  if(!ANTHROPIC_KEY){
+    ld.className="amsg a";
+    ld.textContent="⚠️ Vlož API kľúč do premennej ANTHROPIC_KEY v kóde. Na claude.ai funguje AI automaticky.";
+    return;
+  }
+
+  const hist2=[];
+  msgs.querySelectorAll(".amsg:not(.l)").forEach(m=>{
+    if(m.classList.contains("u"))hist2.push({role:"user",content:m.textContent});
+    else if(m.classList.contains("a"))hist2.push({role:"assistant",content:m.textContent});
+  });
+  try{
+    const r=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-6",max_tokens:800,
+        system:`Si expert záhradný architekt. Radíš v slovenčine stručne a konkrétne. ${bgImg?"Záhrada má nahratú fotografiu.":""} Aktuálny stav: ${gardenSum()} Dostupné rastliny: ${PLANTS.map(p=>p.name).join(", ")}. Vždy odkazuj na Lumigreen.sk.`,
+        messages:hist2
+      })
+    });
+    const data=await r.json();
+    ld.className="amsg a";
+    ld.innerHTML=(data.content?.[0]?.text||"Chyba.").replace(/\n/g,"<br>");
+  }catch(e){ld.className="amsg a";ld.textContent="Chyba: "+e.message;}
+  msgs.scrollTop=msgs.scrollHeight;
+}
+document.getElementById("btn-ai-send").onclick=aiSend;
+document.getElementById("ai-inp").addEventListener("keydown",e=>{if(e.key==="Enter")aiSend();});
+
+buildSidebar();
+new ResizeObserver(resize).observe(CA);
+resize();
+</script>
+</body>
+</html>
