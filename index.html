@@ -59,6 +59,19 @@ canvas{position:absolute;top:0;left:0}
 .tmpl-card{border:1px solid #dde;border-radius:8px;padding:8px;cursor:pointer;margin-bottom:6px;font-size:11px}
 .tmpl-card:hover{background:#f0f4e8;border-color:#b7dba8}
 .tmpl-card strong{display:block;margin-bottom:2px;color:#1b4332}
+/* Scale modal */
+#scale-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center}
+#scale-modal.open{display:flex}
+#scale-box{background:#fff;border-radius:12px;padding:24px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.18)}
+#scale-box h3{font-size:15px;font-weight:700;color:#1b4332;margin-bottom:6px}
+#scale-box p{font-size:12px;color:#888;margin-bottom:16px;line-height:1.5}
+#scale-box input{width:100%;padding:8px 12px;border:1px solid #dde;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none}
+#scale-box input:focus{border-color:#52b788}
+#scale-box .row{display:flex;gap:8px}
+#scale-box .row button{flex:1;padding:8px;border-radius:8px;border:1px solid #dde;background:#f8f9fa;cursor:pointer;font-size:12px}
+#scale-box .row button.primary{background:#1b4332;color:#fff;border-color:#1b4332}
+/* Scale point overlay */
+#scale-pt-info{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(27,67,50,0.92);color:#fff;padding:7px 16px;border-radius:20px;font-size:12px;font-weight:500;z-index:15;pointer-events:none;display:none}
 </style>
 </head>
 <body>
@@ -74,6 +87,7 @@ canvas{position:absolute;top:0;left:0}
     <button class="tbtn" id="btn-delete" title="Delete"><i class="ti ti-trash"></i></button>
     <div style="width:1px;height:18px;background:#dde;margin:0 2px"></div>
     <button class="tbtn" id="btn-grid"><i class="ti ti-grid-dots"></i> Mriežka</button>
+    <button class="tbtn" id="btn-scale-tool" title="Nastav mierku: klikni 2 body na pôdoryse a zadaj skutočnú vzdialenosť">📏 Nastav mierku</button>
     <button class="tbtn" id="btn-upload"><i class="ti ti-upload"></i> Foto / Pôdorys</button>
     <button class="tbtn" id="btn-download"><i class="ti ti-download"></i> Stiahnuť plán</button>
     <input type="file" id="file-input" accept="image/*">
@@ -99,6 +113,7 @@ canvas{position:absolute;top:0;left:0}
         <div class="icon">📷</div>
         <p>Klikni alebo pretiahni<br><strong>fotografiu z dronu</strong> alebo <strong>pôdorys</strong></p>
       </div>
+      <div id="scale-pt-info"></div>
       <div id="scale-bar">Mriežka: 1 štvorček = 1 m²</div>
       <div id="coords">0 m, 0 m</div>
       <div id="layer-bar">
@@ -112,6 +127,25 @@ canvas{position:absolute;top:0;left:0}
   <div id="bottombar">
     <span id="hint">👋 Vitaj! Vyber nástroj vľavo a začni plánovať záhradu.</span>
     <span style="color:#bbb">Ctrl+Z späť · Ctrl+C/V kopírovať · Delete zmazať</span>
+  </div>
+</div>
+
+<!-- Scale Modal -->
+<div id="scale-modal">
+  <div id="scale-box">
+    <h3>📏 Nastav mierku pôdorysu</h3>
+    <p>Klikni na <strong>2 body</strong> na pôdoryse ktorých skutočnú vzdialenosť poznáš (napr. šírku domu 13 500 mm = 1350 cm). Potom zadaj túto vzdialenosť.</p>
+    <div id="scale-status" style="font-size:12px;color:#1b4332;font-weight:600;margin-bottom:10px;min-height:20px">⬆ Najprv klikni 2 body na pôdoryse</div>
+    <input type="number" id="scale-input" placeholder="Napr. 1350" min="1">
+    <div style="display:flex;gap:12px;margin-bottom:14px">
+      <label style="font-size:12px;color:#555;display:flex;align-items:center;gap:4px"><input type="radio" name="sunit" value="cm" checked> cm</label>
+      <label style="font-size:12px;color:#555;display:flex;align-items:center;gap:4px"><input type="radio" name="sunit" value="mm"> mm</label>
+      <label style="font-size:12px;color:#555;display:flex;align-items:center;gap:4px"><input type="radio" name="sunit" value="m"> m</label>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="cancelScale()" style="flex:1;padding:8px;border-radius:8px;border:1px solid #dde;background:#f8f9fa;cursor:pointer;font-size:12px">Zrušiť</button>
+      <button onclick="applyScale()" style="flex:1;padding:8px;border-radius:8px;border:none;background:#1b4332;color:#fff;cursor:pointer;font-size:12px;font-weight:600">✅ Použiť mierku</button>
+    </div>
   </div>
 </div>
 
@@ -628,6 +662,98 @@ document.getElementById("ai-inp").addEventListener("keydown",e=>{if(e.key==="Ent
 buildSidebar();
 new ResizeObserver(resize).observe(CA);
 resize();
+
+// ---- MIERKA TOOL ----
+let scaleMode=false, scalePts=[], scalePixelDist=0;
+
+document.getElementById("btn-scale-tool").onclick=()=>{
+  if(!bgImg){alert("Najprv nahraj pôdorys alebo fotografiu!");return;}
+  scaleMode=true; scalePts=[];
+  document.getElementById("scale-modal").classList.add("open");
+  document.getElementById("scale-status").textContent="Krok 1: Klikni na PRVÝ bod na pôdoryse";
+  document.getElementById("scale-pt-info").style.display="block";
+  document.getElementById("scale-pt-info").textContent="📏 Klikni 1. bod na pôdoryse";
+  setHint("📏 MIERKA: Klikni na prvý bod na pôdoryse (napr. rohový bod domu)");
+};
+
+// Intercept clicks on canvas when scaleMode active
+cUi.addEventListener("click",e=>{
+  if(!scaleMode||scalePts.length>=2)return;
+  const {x,y}=getPos(e);
+  scalePts.push({x,y});
+  drawScalePts();
+  if(scalePts.length===1){
+    document.getElementById("scale-status").textContent="✅ Bod 1 označený! Teraz klikni na DRUHÝ bod.";
+    document.getElementById("scale-pt-info").textContent="📏 Klikni 2. bod na pôdoryse";
+    setHint("📏 MIERKA: Klikni na druhý bod (napr. druhý roh domu)");
+  } else if(scalePts.length===2){
+    scalePixelDist=Math.hypot(scalePts[1].x-scalePts[0].x,scalePts[1].y-scalePts[0].y);
+    document.getElementById("scale-status").textContent=`✅ Oba body označené! Vzdialenosť: ${Math.round(scalePixelDist)}px. Zadaj skutočnú veľkosť:`;
+    document.getElementById("scale-pt-info").textContent="📏 Zadaj vzdialenosť v modálnom okne";
+    setHint("📏 MIERKA: Zadaj skutočnú vzdialenosť medzi bodmi v modálnom okne");
+  }
+},true);
+
+function drawScalePts(){
+  ctxUi.clearRect(0,0,cUi.width,cUi.height);
+  scalePts.forEach((p,i)=>{
+    ctxUi.beginPath();ctxUi.arc(p.x,p.y,7,0,Math.PI*2);
+    ctxUi.fillStyle="#e53935";ctxUi.fill();
+    ctxUi.strokeStyle="#fff";ctxUi.lineWidth=2;ctxUi.stroke();
+    ctxUi.font="bold 11px sans-serif";ctxUi.fillStyle="#e53935";
+    ctxUi.fillText(`P${i+1}`,p.x+10,p.y-6);
+  });
+  if(scalePts.length===2){
+    ctxUi.beginPath();ctxUi.moveTo(scalePts[0].x,scalePts[0].y);ctxUi.lineTo(scalePts[1].x,scalePts[1].y);
+    ctxUi.strokeStyle="#e53935";ctxUi.lineWidth=2;ctxUi.setLineDash([6,3]);ctxUi.stroke();ctxUi.setLineDash([]);
+  }
+}
+
+function applyScale(){
+  const val=parseFloat(document.getElementById("scale-input").value);
+  const unit=document.querySelector("input[name='sunit']:checked").value;
+  if(!val||val<=0){alert("Zadaj platnú hodnotu!");return;}
+  if(scalePts.length<2){alert("Najprv klikni 2 body na pôdoryse!");return;}
+  // Convert to cm
+  let realCm=val;
+  if(unit==="mm")realCm=val/10;
+  if(unit==="m")realCm=val*100;
+  // 1 grid square = 100cm = 1m, so GRID px = 100cm
+  // new GRID = scalePixelDist / realCm * 100
+  const newGrid=scalePixelDist/realCm*100;
+  // Update global GRID used for coords display
+  window.REAL_GRID=newGrid;
+  // Update scale bar
+  const mPerGrid=(GRID/newGrid).toFixed(2);
+  document.getElementById("scale-bar").textContent=`Mierka: 1 štvorček = ${mPerGrid} m (${Math.round(mPerGrid*100)} cm)`;
+  // Update coords display to use new scale
+  window.SCALE_FACTOR=100/newGrid; // cm per px
+  cancelScale();
+  alert(`✅ Mierka nastavená!\n1 pixel = ${(realCm/scalePixelDist).toFixed(3)} cm\n1 štvorček mriežky = ${Math.round(GRID*(realCm/scalePixelDist))} cm = ${(GRID*(realCm/scalePixelDist)/100).toFixed(2)} m`);
+  setHint(`✅ Mierka nastavená: 1 štvorček = ${Math.round(GRID*(realCm/scalePixelDist))} cm`);
+}
+
+function cancelScale(){
+  scaleMode=false; scalePts=[];
+  document.getElementById("scale-modal").classList.remove("open");
+  document.getElementById("scale-pt-info").style.display="none";
+  ctxUi.clearRect(0,0,cUi.width,cUi.height);
+}
+window.cancelScale=cancelScale;
+window.applyScale=applyScale;
+
+// Override coords display to use scale factor
+const origMouseMove=cUi.onmousemove;
+cUi.addEventListener("mousemove",e=>{
+  const {x,y}=getPos(e);
+  const sf=window.SCALE_FACTOR||null;
+  if(sf){
+    const xm=(x*sf/100).toFixed(2), ym=(y*sf/100).toFixed(2);
+    document.getElementById("coords").textContent=`${xm} m, ${ym} m`;
+  } else {
+    document.getElementById("coords").textContent=`${Math.floor(x/GRID)} m, ${Math.floor(y/GRID)} m`;
+  }
+});
 </script>
 </body>
 </html>
